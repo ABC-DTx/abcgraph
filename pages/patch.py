@@ -8,7 +8,7 @@ import os
 import platform
 import sys
 
-sys.path.append('/tf/ABCμ프로젝트')
+sys.path.append('/tf/ABCμπροεκτ')
 from functions import get_google_sheet
 
 BODY_WEIGHT = 70
@@ -30,11 +30,11 @@ else:
     print("⚠️ 폰트 파일 없음:", font_path)
 
 st.set_page_config(layout="centered")
-st.title("🩹 경구 약물 농도 시뮬레이션")
+st.title("🩹 패치 약물 농도 시뮬레이션")
 
 # 파치 모델 시험
 
-def simulate_patch_concentration_2comp(row, duration_hour, total_hour, interval_min, end_threshold):
+def simulate_patch_concentration_2comp(row, duration_hour, total_hour, end_threshold):
     t_half = row['t_half']
     t_max = row['t_max']
     F = row['F']
@@ -46,7 +46,7 @@ def simulate_patch_concentration_2comp(row, duration_hour, total_hour, interval_
     ke = math.log(2) / t_half
     ka = ke * 4
 
-    interval_hr = interval_min / 60
+    interval_hr = 1 / 60  # 1분 해상도 고정
     t_all = np.arange(0, total_hour + interval_hr, interval_hr)
 
     Dose = R0 * duration_hour
@@ -62,7 +62,7 @@ def simulate_patch_concentration_2comp(row, duration_hour, total_hour, interval_
 
     C_all = np.array(C_all)
 
-    # onset_time 시점의 낮모
+    # onset_time 시점의 농목
     onset_idx = (np.abs(t_all - onset_time)).argmin()
     C_onset = C_all[onset_idx]
 
@@ -141,7 +141,7 @@ df = get_google_sheet()
 df = df[df['Use'] == 'Y']
 patch_df = df[df['route_of_administration'] == '패치']
 
-st.subheader("📊 전체 패치 약물 시뮬레이션")
+st.subheader("📊 전체 파치 약물 시뮬레이션")
 
 for _, row in patch_df.iterrows():
     drug_name = row['drug_name']
@@ -152,7 +152,6 @@ for _, row in patch_df.iterrows():
     R0 = D * 1000  # mcg/hr
     V_d = float(row['V_d']) * BODY_WEIGHT
     onset_time = float(row['onset_time_hour'])
-    interval_min = float(row['interval_min'])
     total_hour = float(row['total_hour'])
     duration_hour = float(row['patch_duration_hour'])
     end_threshold = float(row['end_threshold'])
@@ -167,7 +166,7 @@ for _, row in patch_df.iterrows():
         'onset_time': onset_time
     }
 
-    result = simulate_patch_concentration_2comp(row_dict, duration_hour, total_hour, interval_min, end_threshold)
+    result = simulate_patch_concentration_2comp(row_dict, duration_hour, total_hour, end_threshold)
 
     st.subheader(f"🩹 {drug_name}")
     st.markdown(f"""
@@ -179,7 +178,6 @@ for _, row in patch_df.iterrows():
     - **Onset time:** {onset_time} hr  
     - **Patch duration:** {duration_hour} hr  
     - **Total simulation:** {total_hour} hr  
-    - **Sampling interval:** {interval_min} min  
     - **End threshold:** {end_threshold} ng/ml
     """)
     plot_patch_concentration(result)
