@@ -141,7 +141,7 @@ df = get_google_sheet()
 df = df[df['Use'] == 'Y']
 patch_df = df[df['route_of_administration'] == '패치']
 
-st.subheader("📊 전체 파치 약물 시뮬레이션")
+st.subheader("📊 전체 패치 약물 시뮬레이션")
 
 for _, row in patch_df.iterrows():
     drug_name = row['drug_name']
