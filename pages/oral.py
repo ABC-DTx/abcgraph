@@ -49,7 +49,7 @@ def concentration_C1_oral(t, ka, F, D, Vd, k):
     exp2 = np.exp(-ka * t)
     return (numerator / denominator * (exp1 - exp2)) * 1000  # ng/ml
 
-def simulate_concentration_json_oral(row, interval_min, end_threshold):
+def simulate_concentration_json_oral(row, end_threshold):
     t_half = row['t_half']
     t_max = row['t_max']
     F = row['F']
@@ -120,7 +120,7 @@ def simulate_concentration_json_oral(row, interval_min, end_threshold):
     }
 
 
-def plot_concentration_from_result_oral(result, interval_min=10):
+def plot_concentration_from_result_oral(result):
     drug_name = result["drug_name"]
     x = result["x"]
     y = result["y"]
@@ -129,7 +129,6 @@ def plot_concentration_from_result_oral(result, interval_min=10):
 
     fig, ax = plt.subplots(figsize=(7, 3.5))  # 작게 설정
     ax.plot(x, y, label="Concentration (ng/ml)", color="blue")
-    #ax.set_xticks(np.arange(0, max(x) + 0.01, interval_min / 60))
     ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=10))  #
 
     if onset_points:
@@ -166,7 +165,6 @@ for _, row in options.iterrows():
     D = float(row['D'])
     V_d = float(row['V_d']) * BODY_WEIGHT
     onset_time = float(row['onset_time_hour'])
-    interval_min = float(row['interval_min'])
     end_threshold = float(row['end_threshold'])
     total_hour = int(row['total_hour'])
 
@@ -179,7 +177,7 @@ for _, row in options.iterrows():
         'V_d': V_d,
         'onset_time': onset_time,
         'total_hour': total_hour,
-    }, interval_min, end_threshold)
+    }, end_threshold)
     print(result)
     # ❌ with ❌ → ✅ 그냥 호출 ✅
     st.subheader(f"💊 {drug_name}")
@@ -190,9 +188,8 @@ for _, row in options.iterrows():
     - **F (생체이용률):** {F*100:.1f}%  
     - **D (투여량):** {D} mg  
     - **Vd (분포용적):** {row['V_d']} L/kg × {BODY_WEIGHT} kg = {V_d:.2f} L  
-    - **Onset time:** {onset_time} hr  
-    - **Sampling interval:** {interval_min} min  
+    - **Onset time:** {onset_time} hr
     - **효과 종료 임계값:** {end_threshold} ng/ml
     """)
 
-    plot_concentration_from_result_oral(result, interval_min=interval_min)
+    plot_concentration_from_result_oral(result)
