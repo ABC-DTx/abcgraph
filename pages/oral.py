@@ -107,7 +107,7 @@ def simulate_concentration_json_oral(row, end_threshold):
             "x": round(float(cross_t), 2),
             "y": round(float(end_threshold), 2)
         }
-        # ✂️ 시뮬레이션 결과 잘라내기
+        # 일단 total_hour까지 계산하고, 그래프 그릴때 잘라내기
         t_all = t_all[:end_index + 1]
         C_all = C_all[:end_index + 1]
 
@@ -118,7 +118,6 @@ def simulate_concentration_json_oral(row, end_threshold):
         "onset_points": onset_points,
         "end_point": end_point
     }
-
 
 def plot_concentration_from_result_oral(result):
     drug_name = result["drug_name"]
@@ -153,11 +152,11 @@ def plot_concentration_from_result_oral(result):
 # === 데이터 불러오기 및 필터링 ===
 df = get_google_sheet()
 df = df[df['Use'] == 'Y']
-options = df[df['route_of_administration'].isin(['경구일반', '경구서방']) & (df['onset_time_hour'].astype(float) > 0)]
+oral_df = df[df['route_of_administration'].isin(['경구일반', '경구서방']) & (df['onset_time_hour'].astype(float) > 0)]
 
 st.subheader("📊 전체 경구 약물 시뮬레이션")
 
-for _, row in options.iterrows():
+for _, row in oral_df.iterrows():
     drug_name = row['drug_name']
     t_half = float(row['t_half'])
     t_max = float(row['t_max'])
@@ -167,6 +166,7 @@ for _, row in options.iterrows():
     onset_time = float(row['onset_time_hour'])
     end_threshold = float(row['end_threshold'])
     total_hour = int(row['total_hour'])
+    c_max = float(row['Cmax(ng/ml)'])
 
     result = simulate_concentration_json_oral({
         'drug_name': drug_name,
@@ -178,7 +178,6 @@ for _, row in options.iterrows():
         'onset_time': onset_time,
         'total_hour': total_hour,
     }, end_threshold)
-    print(result)
     # ❌ with ❌ → ✅ 그냥 호출 ✅
     st.subheader(f"💊 {drug_name}")
 
@@ -190,6 +189,7 @@ for _, row in options.iterrows():
     - **Vd (분포용적):** {row['V_d']} L/kg × {BODY_WEIGHT} kg = {V_d:.2f} L  
     - **Onset time:** {onset_time} hr
     - **효과 종료 임계값:** {end_threshold} ng/ml
+    - **Cmax:** {c_max} ng/ml
     """)
 
     plot_concentration_from_result_oral(result)

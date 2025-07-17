@@ -58,7 +58,7 @@ def simulate_patch_concentration_2comp(row, duration_hour, total_hour, end_thres
         else:
             c_removal = (F * Dose * ka / (V_d * (ka - ke))) * (math.exp(-ke * duration_hour) - math.exp(-ka * duration_hour))
             c = c_removal * math.exp(-ke * (ti - duration_hour))
-        C_all.append(c * 1000)  # ng/mL
+        C_all.append(c)  # ng/mL
 
     C_all = np.array(C_all)
 
@@ -147,6 +147,7 @@ for _, row in patch_df.iterrows():
     drug_name = row['drug_name']
     t_half = float(row['t_half'])
     t_max = float(row['t_max'])
+    c_max = float(row['Cmax(ng/ml)'])
     F = float(row['F']) * 0.01
     D = float(row['D'])
     R0 = D * 1000  # mcg/hr
@@ -155,6 +156,7 @@ for _, row in patch_df.iterrows():
     total_hour = float(row['total_hour'])
     duration_hour = float(row['patch_duration_hour'])
     end_threshold = float(row['end_threshold'])
+
 
     row_dict = {
         'drug_name': drug_name,
@@ -167,7 +169,6 @@ for _, row in patch_df.iterrows():
     }
 
     result = simulate_patch_concentration_2comp(row_dict, duration_hour, total_hour, end_threshold)
-
     st.subheader(f"🩹 {drug_name}")
     st.markdown(f"""
     - **T₁/₂ (반감기):** {t_half} hr  
@@ -179,5 +180,6 @@ for _, row in patch_df.iterrows():
     - **Patch duration:** {duration_hour} hr  
     - **Total simulation:** {total_hour} hr  
     - **End threshold:** {end_threshold} ng/ml
+    - **Cmax:** {c_max} ng/ml
     """)
     plot_patch_concentration(result)
