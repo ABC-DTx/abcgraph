@@ -1,7 +1,10 @@
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
+import os
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
+SERVICE_ACCOUNT_FILE = os.path.join(base_dir, 'creds', 'dauntless-water-409404-a2aaae9a477f.json')
 
 def safe_decode_unicode(text):
     if isinstance(text, str) and r'\u' in text:
