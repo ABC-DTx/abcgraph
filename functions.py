@@ -16,7 +16,7 @@ def safe_decode_unicode(text):
 
 
 def get_google_sheet():
-    SERVICE_ACCOUNT_FILE = 'dauntless-water-409404-a2aaae9a477f.json'
+    #SERVICE_ACCOUNT_FILE = 'dauntless-water-409404-a2aaae9a477f.json'
     SCOPES = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"  # ← 추가
