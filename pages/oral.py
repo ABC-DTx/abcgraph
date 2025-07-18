@@ -8,8 +8,7 @@ import os
 import sys
 import matplotlib.ticker as ticker
 
-# Google Sheet 함수 불러오기
-sys.path.append('/tf/ABC프로젝트')
+
 from functions import get_google_sheet
 
 BODY_WEIGHT = 70
@@ -17,8 +16,8 @@ BODY_WEIGHT = 70
 # Streamlit 설정
 st.set_page_config(layout="centered")
 st.title("💊 경구 약물 농도 시뮬레이션")
-system = platform.system()
 
+system = platform.system()
 if system == "Windows":
     font_path = "C:/Windows/Fonts/malgun.ttf"
 elif system == "Darwin":  # macOS
@@ -35,161 +34,99 @@ if font_path and os.path.exists(font_path):
     print(f"✅ 폰트 설정됨: {font_prop.get_name()} ({system})")
 else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
+
 # 약동학 모델 함수
-def calc_k_and_ka_oral(t_half, t_max):
-    ln2 = math.log(2)
-    k = ln2 / t_half
-    ka = ln2 / t_max + k
-    return k, ka
+def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, end_threshold):
+    Vd = V_d * body_weight
+    k = math.log(2) / t_half
+    ka = (math.log(2) / t_max) + k
+    time = np.linspace(0, t_half * 7, 1000)
 
-def concentration_C1_oral(t, ka, F, D, Vd, k):
-    numerator = ka * F * D
-    denominator = Vd * (ka - k)
-    exp1 = np.exp(-k * t)
-    exp2 = np.exp(-ka * t)
-    return (numerator / denominator * (exp1 - exp2)) * 1000  # ng/ml
+    C1_mg_per_L = (ka * F * D) / (Vd * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time))
+    C1_mg_per_L[C1_mg_per_L < 0] = 0
+    C1_ng_per_mL = C1_mg_per_L * 1000
 
-def simulate_concentration_json_oral(row, end_threshold):
-    t_half = row['t_half']
-    t_max = row['t_max']
-    F = row['F']
-    D = row['D']
-    V_d = row['V_d']
-    onset_time = row['onset_time']
-    drug_name = row['drug_name']
-    total_hour = row['total_hour']
+    onset_concentration = (ka * F * D) / (Vd * (ka - k)) * \
+                          (np.exp(-k * onset_time_hour) - np.exp(-ka * onset_time_hour)) * 1000
 
-    # 약동학 상수 계산
-    k, ka = calc_k_and_ka_oral(t_half, t_max)
+    t_max_index = np.argmax(C1_ng_per_mL)
+    t_max_time = time[t_max_index]
 
-    # 0 ~ 48시간까지 1분 단위로 시뮬레이션
-    #t_all = np.linspace(0, 48, 48 * 60 + 1)
-    t_all = np.linspace(0, total_hour, total_hour * 60 + 1)
-    C_all = concentration_C1_oral(t_all, ka, F, D, V_d, k)
+    time_after_tmax = time[t_max_index:]
+    conc_after_tmax = C1_ng_per_mL[t_max_index:]
+    try:
+        onset_end_index = np.where(conc_after_tmax < onset_concentration)[0][0]
+        onset_end_time = time_after_tmax[onset_end_index]
+    except IndexError:
+        onset_end_time = None
 
-    # ⏱️ onset time 에 해당하는 농도 계산
-    C_onset = concentration_C1_oral(np.array([onset_time]), ka, F, D, V_d, k)[0]
+    try:
+        end_threshold_index = np.where(conc_after_tmax < end_threshold)[0][0]
+        end_threshold_time = time_after_tmax[end_threshold_index]
+    except IndexError:
+        end_threshold_time = None
 
-    # 📍 onset 농도와의 교차점 찾기 (상승기 1개 + 하강기 1개)
-    def find_crossings(t, y, threshold, max_points=2):
-        points = []
-        for i in range(1, len(y)):
-            if (y[i - 1] < threshold and y[i] >= threshold) or (y[i - 1] > threshold and y[i] <= threshold):
-                t0, t1 = t[i - 1], t[i]
-                y0, y1 = y[i - 1], y[i]
-                slope = (y1 - y0) / (t1 - t0)
-                cross_t = t0 + (threshold - y0) / slope
-                points.append({
-                    "x": round(float(cross_t), 2),
-                    "y": round(float(threshold), 2)
-                })
-            if len(points) >= max_points:
-                break
-        return points
+    # ✅ 그래프 외부에 파라미터 출력 (Streamlit markdown)
+    st.markdown(f"""    
+    | 항목 | 값 |
+    |------|------|
+    | 용량 (D) | {D} mg |
+    | 생체이용률 (F) | {F*100:.1f} % |
+    | 분포용적 (Vd) | {V_d:.2f} L/kg × {body_weight}kg = {Vd:.2f} L |
+    | 반감기 (t½) | {t_half} hr |
+    | Tmax | {t_max} hr |
+    | 약효 시작 시간 | {onset_time_hour} hr |
+    | 약효 종료 농도 | {end_threshold} ng/mL |
+    """)
 
-    onset_points = find_crossings(t_all, C_all, C_onset, max_points=2)
+    # ✅ 그래프
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(time, C1_ng_per_mL, label='혈중 농도 (C₁)', color='blue', linewidth=2)
 
-    # ✅ 효과 종료 시점 (하강기에서 end_threshold 아래로 떨어지는 첫 지점)
-    end_index = None
-    for i in range(np.argmax(C_all), len(C_all)):
-        if C_all[i] < end_threshold:
-            end_index = i
-            break
+    ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'약효 시작: {onset_time_hour:.1f}h')
+    if onset_end_time:
+        ax.axvline(x=onset_end_time, color='orange', linestyle='--', label=f'약효 종료: {onset_end_time:.1f}h')
+        ax.axhline(y=onset_concentration, xmin=0, xmax=1, color='red', linestyle='--', linewidth=1.5,
+                   label=f'약효 지속 농도: {onset_concentration:.2f} ng/mL')
 
-    # 종료 시점 보간 계산
-    end_point = None
-    if end_index is not None and end_index > 0:
-        t0, t1 = t_all[end_index - 1], t_all[end_index]
-        c0, c1 = C_all[end_index - 1], C_all[end_index]
-        slope = (c1 - c0) / (t1 - t0)
-        cross_t = t0 + (end_threshold - c0) / slope
-        end_point = {
-            "x": round(float(cross_t), 2),
-            "y": round(float(end_threshold), 2)
-        }
-        # 일단 total_hour까지 계산하고, 그래프 그릴때 잘라내기
-        t_all = t_all[:end_index + 1]
-        C_all = C_all[:end_index + 1]
+    if end_threshold_time:
+        ax.axhline(y=end_threshold, color='red', linestyle=':', label=f'종료 농도: {end_threshold} ng/mL')
+        ax.plot(end_threshold_time, end_threshold, 'ro', markersize=8, label=f'종료 시점: {end_threshold_time:.1f}h')
 
-    return {
-        "drug_name": drug_name,
-        "x": [round(float(t), 2) for t in t_all],
-        "y": [round(float(c), 2) for c in C_all],
-        "onset_points": onset_points,
-        "end_point": end_point
-    }
+    c_max_value = np.max(C1_ng_per_mL)
+    ax.plot(t_max_time, c_max_value, 'kv', markersize=8, label=f'Cmax: {c_max_value:.2f} ng/mL')
 
-def plot_concentration_from_result_oral(result):
-    drug_name = result["drug_name"]
-    x = result["x"]
-    y = result["y"]
-    onset_points = result["onset_points"]
-    end_point = result.get("end_point")
-
-    fig, ax = plt.subplots(figsize=(7, 3.5))  # 작게 설정
-    ax.plot(x, y, label="Concentration (ng/ml)", color="blue")
-    ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=10))  #
-
-    if onset_points:
-        onset_y = onset_points[0]['y']
-        ax.axhline(onset_y, color='red', linestyle='--', label=f"Onset = {onset_y} ng/ml")
-        for pt in onset_points:
-            if pt['x'] <= x[-1]:
-                ax.plot(pt['x'], pt['y'], 'ro')
-                ax.annotate(f"({pt['x']}, {pt['y']})", (pt['x'], pt['y']), textcoords="offset points", xytext=(5, 5))
-
-    if end_point and end_point['x'] <= x[-1]:
-        ax.plot(end_point['x'], end_point['y'], 'go', label="Effectively 0 ng/ml")
-        ax.annotate(f"({end_point['x']}, {end_point['y']})", (end_point['x'], end_point['y']), textcoords="offset points", xytext=(5, -15))
-
-    ax.set_xlabel("Time (hours)")
-    ax.set_ylabel("Concentration (ng/ml)")
-    ax.set_title(f"Drug Concentration: {drug_name}")
-    ax.grid(True)
+    ax.set_title(f'{drug_name} - 혈중 농도 및 약효 시간')
+    ax.set_xlabel("시간 (hours)")
+    ax.set_ylabel("혈중 농도 (ng/mL)")
+    ax.grid(True, linestyle=':')
     ax.legend()
+    ax.set_xlim(0, time[-1])
+    ax.set_ylim(0)
+
     st.pyplot(fig)
 
 # === 데이터 불러오기 및 필터링 ===
-df = get_google_sheet()
-df = df[df['Use'] == 'Y']
-oral_df = df[df['route_of_administration'].isin(['경구일반', '경구서방']) & (df['onset_time_hour'].astype(float) > 0)]
+def main():
 
-st.subheader("📊 전체 경구 약물 시뮬레이션")
+    df = get_google_sheet()
+    filtered_df = df[(df['Use'] == 'Y') & (df['route_of_administration'].isin(['경구일반', '경구서방']))]
+    st.markdown("---")
 
-for _, row in oral_df.iterrows():
-    drug_name = row['drug_name']
-    t_half = float(row['t_half'])
-    t_max = float(row['t_max'])
-    F = float(row['F']) * 0.01
-    D = float(row['D'])
-    V_d = float(row['V_d']) * BODY_WEIGHT
-    onset_time = float(row['onset_time_hour'])
-    end_threshold = float(row['end_threshold'])
-    total_hour = int(row['total_hour'])
-    c_max = float(row['Cmax(ng/ml)'])
+    for _, row in filtered_df.iterrows():
+        st.subheader(f"🧪 {row['drug_name']}")
+        plot_drug_concentration_with_onset(
+            drug_name=row['drug_name'],
+            D=float(row['D']),
+            F=float(row['F']) * 0.01,
+            V_d=float(row['V_d']),
+            t_half=float(row['t_half']),
+            t_max=float(row['t_max']),
+            body_weight=BODY_WEIGHT,
+            onset_time_hour=float(row['onset_time_hour']),
+            end_threshold=float(row['end_threshold'])
+        )
+        st.markdown("---")
 
-    result = simulate_concentration_json_oral({
-        'drug_name': drug_name,
-        't_half': t_half,
-        't_max': t_max,
-        'F': F,
-        'D': D,
-        'V_d': V_d,
-        'onset_time': onset_time,
-        'total_hour': total_hour,
-    }, end_threshold)
-    # ❌ with ❌ → ✅ 그냥 호출 ✅
-    st.subheader(f"💊 {drug_name}")
-
-    st.markdown(f"""
-    - **T₁/₂ (반감기):** {t_half} hr  
-    - **Tmax:** {t_max} hr  
-    - **F (생체이용률):** {F*100:.1f}%  
-    - **D (투여량):** {D} mg  
-    - **Vd (분포용적):** {row['V_d']} L/kg × {BODY_WEIGHT} kg = {V_d:.2f} L  
-    - **Onset time:** {onset_time} hr
-    - **효과 종료 임계값:** {end_threshold} ng/ml
-    - **Cmax:** {c_max} ng/ml
-    """)
-
-    plot_concentration_from_result_oral(result)
+if __name__ == "__main__":
+    main()

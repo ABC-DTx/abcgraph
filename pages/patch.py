@@ -157,7 +157,6 @@ for _, row in patch_df.iterrows():
     duration_hour = float(row['patch_duration_hour'])
     end_threshold = float(row['end_threshold'])
 
-
     row_dict = {
         'drug_name': drug_name,
         't_half': t_half,
@@ -169,6 +168,8 @@ for _, row in patch_df.iterrows():
     }
 
     result = simulate_patch_concentration_2comp(row_dict, duration_hour, total_hour, end_threshold)
+    if drug_name == "":
+        print(result)
     st.subheader(f"🩹 {drug_name}")
     st.markdown(f"""
     - **T₁/₂ (반감기):** {t_half} hr  
