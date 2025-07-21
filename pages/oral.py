@@ -38,16 +38,16 @@ else:
 # 약동학 모델 함수
 def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, end_threshold):
     Vd = V_d * body_weight
-    k = math.log(2) / t_half
-    ka = (math.log(2) / t_max) + k
-    time = np.linspace(0, t_half * 7, 1000)
+    k = math.log(2) / t_half #1차 소실속도 상수
+    ka = (math.log(2) / t_max) + k #흡수속도 상수
+    time = np.linspace(0, t_half * 7, 1000) #X scale 게산 (반감기 * 7 후, 1000으로 나눠 정밀하게 그림)
 
-    C1_mg_per_L = (ka * F * D) / (Vd * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time))
+    C1_mg_per_L = (ka * F * D) / (Vd * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time)) # 이게 진짜 농도 계산 수식
     C1_mg_per_L[C1_mg_per_L < 0] = 0
-    C1_ng_per_mL = C1_mg_per_L * 1000
+    C1_ng_per_mL = C1_mg_per_L * 1000 # 수식은 ug로 반환하기때문에, mg로 바꾸기 위해 1000 곱함
 
     onset_concentration = (ka * F * D) / (Vd * (ka - k)) * \
-                          (np.exp(-k * onset_time_hour) - np.exp(-ka * onset_time_hour)) * 1000
+                          (np.exp(-k * onset_time_hour) - np.exp(-ka * onset_time_hour)) #  유효농도 도달시간 기준으로 해당점의 농도 구해서 상승기, 반감기 두번 점찍음 ( 1000 #여기도 농도라서 1000 곱함)
 
     t_max_index = np.argmax(C1_ng_per_mL)
     t_max_time = time[t_max_index]
