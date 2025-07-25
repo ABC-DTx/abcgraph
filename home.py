@@ -14,7 +14,7 @@ st.markdown("""
 
 ### 📂 페이지 안내
 - [📈 경구 투여 시뮬레이션](/oral)
-- [📉 패치 투여 시뮬레이션](/patch) *(개발 중)*
+- [📉 패치 투여 시뮬레이션](/patch)
 - Google Spreadsheet: https://docs.google.com/spreadsheets/d/1BXE4oJEHYxY-65O7P4ZDQOlXIBBbdJQzAigmDeTniUc/edit?gid=1824505919#gid=1824505919
 
 ---
