@@ -1,0 +1,144 @@
+import streamlit as st
+import numpy as np
+import platform
+import math
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+import os
+import matplotlib.ticker as ticker
+
+from functions import get_google_sheet
+
+BODY_WEIGHT = 70
+
+# Streamlit 설정
+st.set_page_config(layout="centered")
+st.title("💊 지속성 약물 농도 시뮬레이션")
+
+# 폰트 설정
+system = platform.system()
+if system == "Windows":
+    font_path = "C:/Windows/Fonts/malgun.ttf"
+elif system == "Darwin":
+    font_path = "/System/Library/Fonts/Supplemental/AppleGothic.ttf"
+elif system == "Linux":
+    font_path = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
+else:
+    font_path = None
+
+if font_path and os.path.exists(font_path):
+    font_prop = fm.FontProperties(fname=font_path)
+    plt.rcParams["font.family"] = font_prop.get_name()
+    plt.rcParams["axes.unicode_minus"] = False
+else:
+    print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
+
+# 지속성 약물 농도 계산 함수
+def plot_patch_concentration(
+    drug_name, D, F, V_d, t_half, t_max, body_weight,
+    onset_time, patch_duration_hour, end_threshold
+):
+    R0 = D * 1000 / patch_duration_hour  # µg/hr
+    Vd_total = V_d * body_weight   # L
+    ke = math.log(2) / t_half      # 1차 소실속도 상수
+
+    total_time = t_half * 7
+    time = np.linspace(0, total_time, 1000)
+    concentration = []
+
+    for t in time:
+        if t <= patch_duration_hour:
+            c = (F * R0) / (Vd_total * ke) * (1 - np.exp(-ke * t))
+        else:
+            c_tau = (F * R0) / (Vd_total * ke) * (1 - np.exp(-ke * patch_duration_hour))
+            c = c_tau * np.exp(-ke * (t - patch_duration_hour))
+        concentration.append(c)
+
+    concentration = np.array(concentration)
+
+    onset_conc = (F * R0) / (Vd_total * ke) * (1 - np.exp(-ke * onset_time))
+    t_max_index = np.argmax(concentration)
+    t_max_time = time[t_max_index]
+    c_max = concentration[t_max_index]
+
+    try:
+        after_peak = concentration[t_max_index:]
+        time_after_peak = time[t_max_index:]
+        end_idx = np.where(after_peak < onset_conc)[0][0]
+        onset_end_time = time_after_peak[end_idx]
+    except IndexError:
+        onset_end_time = None
+
+    try:
+        end_threshold_idx = np.where(after_peak < end_threshold)[0][0]
+        end_threshold_time = time_after_peak[end_threshold_idx]
+    except IndexError:
+        end_threshold_time = None
+
+    # 표 출력
+    st.markdown(f"""
+    | 항목 | 값 |
+    |------|------|
+    | 용량 (D) | {D} mg |
+    | 생체이용률 (F) | {F*100:.1f}% |
+    | 분포용적 (Vd) | {V_d:.2f} L/kg × {body_weight}kg = {Vd_total:.2f} L |
+    | 반감기 (t½) | {t_half} hr |
+    | Tmax | {t_max} hr |
+    | Patch 부착 시간 | {patch_duration_hour} hr |
+    | 약효 시작 | {onset_time} hr |
+    | 약효 종료 농도 | {end_threshold} ng/mL |
+    """)
+
+    # 그래프
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(time, concentration, label='혈중 농도', color='blue')
+
+    ax.axvline(x=onset_time, color='green', linestyle='--', label=f'Onset: {onset_time:.1f}h')
+    if onset_end_time:
+        ax.axvline(x=onset_end_time, color='orange', linestyle='--', label=f'End of effect: {onset_end_time:.1f}h')
+        ax.axhline(y=onset_conc, color='red', linestyle='--', label=f'효과 농도: {onset_conc:.2f} ng/mL')
+
+    if end_threshold_time:
+        ax.axhline(y=end_threshold, color='red', linestyle=':', label=f'종료 농도: {end_threshold} ng/mL')
+        ax.plot(end_threshold_time, end_threshold, 'ro', label=f'종료 시점: {end_threshold_time:.1f}h')
+
+    ax.axvline(x=t_max, color='purple', linestyle='--', label=f'Tmax: {t_max:.1f}h')
+    ax.plot(t_max_time, c_max, 'kv', label=f'Cmax: {c_max:.2f} ng/mL')
+
+    ax.axvline(x=patch_duration_hour, color='gray', linestyle='--', label=f'Patch 제거: {patch_duration_hour:.1f}h')
+
+    ax.set_title(f"{drug_name} - 농도 곡선")
+    ax.set_xlabel("시간 (hr)")
+    ax.set_ylabel("혈중 농도 (ng/mL)")
+    ax.grid(True, linestyle=':')
+    ax.legend()
+    ax.set_xlim(0, time[-1])
+    ax.set_ylim(0)
+
+    st.pyplot(fig)
+
+# === 메인 실행 ===
+def main():
+    df = get_google_sheet()
+    filtered_df = df[(df['Use'] == 'Y') & (df['route_of_administration'].isin(['경구일반', '경구서방']))]
+
+    st.markdown("---")
+
+    for _, row in filtered_df.iterrows():
+        st.subheader(f"🧪 {row['drug_name']}")
+        plot_patch_concentration(
+            drug_name=row['drug_name'],
+            D=float(row['D']),
+            F=float(row['F']) * 0.01,
+            V_d=float(row['V_d']),
+            t_half=float(row['t_half']),
+            t_max=float(row['t_max']),
+            body_weight=BODY_WEIGHT,
+            onset_time=float(row['onset_time_hour']),
+            patch_duration_hour=float(row['patch_duration_hour']),
+            end_threshold=float(row['end_threshold'])
+        )
+        st.markdown("---")
+
+if __name__ == "__main__":
+    main()
