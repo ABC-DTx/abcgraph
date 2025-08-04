@@ -46,6 +46,7 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
     C1_mg_per_L[C1_mg_per_L < 0] = 0
     C1_ng_per_mL = C1_mg_per_L * 1000 # 수식은 ug로 반환하기때문에, mg로 바꾸기 위해 1000 곱함
 
+
     onset_concentration = (ka * F * D) / (Vd * (ka - k)) * \
                           (np.exp(-k * onset_time_hour) - np.exp(-ka * onset_time_hour)) #  유효농도 도달시간 기준으로 해당점의 농도 구해서 상승기, 반감기 두번 점찍음 ( 1000 #여기도 농도라서 1000 곱함)
 
