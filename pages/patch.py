@@ -34,46 +34,30 @@ else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
 # 패치 약물 농도 계산 함수
-def plot_patch_concentration(
-    drug_name, D, F, V_d, t_half, t_max, body_weight,
-    onset_time, patch_duration_hour, end_threshold
-):
-    R0 = D * 1000 / patch_duration_hour  # µg/hr
+def plot_patch_concentration(    drug_name, D, F, V_d, t_half, t_max, body_weight,    onset_time, patch_duration_hour, end_threshold):
+    D_ng = D * 1e6
+    k = np.log(2) / t_half
+    R0 = (D_ng * F) / patch_duration_hour  # ng/hr
+
+    #R0 = D * 1000 / patch_duration_hour  # µg/hr
     Vd_total = V_d * body_weight   # L
-    ke = math.log(2) / t_half      # 1차 소실속도 상수
+    #ke = math.log(2) / t_half      # 1차 소실속도 상수
 
     total_time = t_half * 7
     time = np.linspace(0, total_time, 1000)
+
     concentration = []
 
     for t in time:
         if t <= patch_duration_hour:
-            c = (F * R0) / (Vd_total * ke) * (1 - np.exp(-ke * t))
+            #c = (R0 / (k * Vd_total)) * (1 - np.exp(-k * t))
+            c = (R0 / (k * Vd_total)) * (1 - np.exp(-k * t))
         else:
-            c_tau = (F * R0) / (Vd_total * ke) * (1 - np.exp(-ke * patch_duration_hour))
-            c = c_tau * np.exp(-ke * (t - patch_duration_hour))
+            C_end = (R0 / (k * Vd_total) * (1 - np.exp(-k * patch_duration_hour)))
+            c = C_end * np.exp(-k * (t - patch_duration_hour))
         concentration.append(c)
 
     concentration = np.array(concentration)
-
-    onset_conc = (F * R0) / (Vd_total * ke) * (1 - np.exp(-ke * onset_time))
-    t_max_index = np.argmax(concentration)
-    t_max_time = time[t_max_index]
-    c_max = concentration[t_max_index]
-
-    try:
-        after_peak = concentration[t_max_index:]
-        time_after_peak = time[t_max_index:]
-        end_idx = np.where(after_peak < onset_conc)[0][0]
-        onset_end_time = time_after_peak[end_idx]
-    except IndexError:
-        onset_end_time = None
-
-    try:
-        end_threshold_idx = np.where(after_peak < end_threshold)[0][0]
-        end_threshold_time = time_after_peak[end_threshold_idx]
-    except IndexError:
-        end_threshold_time = None
 
     # 표 출력
     st.markdown(f"""
@@ -81,7 +65,7 @@ def plot_patch_concentration(
     |------|------|
     | 용량 (D) | {D} mg |
     | 생체이용률 (F) | {F*100:.1f}% |
-    | 분포용적 (Vd) | {V_d:.2f} L/kg × {body_weight}kg = {Vd_total:.2f} L |
+    | 분포용적 (Vd) | {V_d:.2f} L/kg × {body_weight}kg = {Vd_total} |
     | 반감기 (t½) | {t_half} hr |
     | Tmax | {t_max} hr |
     | Patch 부착 시간 | {patch_duration_hour} hr |
@@ -94,16 +78,9 @@ def plot_patch_concentration(
     ax.plot(time, concentration, label='혈중 농도', color='blue')
 
     ax.axvline(x=onset_time, color='green', linestyle='--', label=f'Onset: {onset_time:.1f}h')
-    if onset_end_time:
-        ax.axvline(x=onset_end_time, color='orange', linestyle='--', label=f'End of effect: {onset_end_time:.1f}h')
-        ax.axhline(y=onset_conc, color='red', linestyle='--', label=f'효과 농도: {onset_conc:.2f} ng/mL')
-
-    if end_threshold_time:
-        ax.axhline(y=end_threshold, color='red', linestyle=':', label=f'종료 농도: {end_threshold} ng/mL')
-        ax.plot(end_threshold_time, end_threshold, 'ro', label=f'종료 시점: {end_threshold_time:.1f}h')
 
     ax.axvline(x=t_max, color='purple', linestyle='--', label=f'Tmax: {t_max:.1f}h')
-    ax.plot(t_max_time, c_max, 'kv', label=f'Cmax: {c_max:.2f} ng/mL')
+    #ax.plot(t_max_time, c_max, 'kv', label=f'Cmax: {c_max:.2f} ng/mL')
 
     ax.axvline(x=patch_duration_hour, color='gray', linestyle='--', label=f'Patch 제거: {patch_duration_hour:.1f}h')
 
