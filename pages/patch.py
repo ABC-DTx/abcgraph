@@ -38,19 +38,15 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
     D_ng = D * 1e6
     k = np.log(2) / t_half
     R0 = (D_ng * F) / patch_duration_hour  # ng/hr
-
-    #R0 = D * 1000 / patch_duration_hour  # µg/hr
     Vd_total = V_d * body_weight   # L
-    #ke = math.log(2) / t_half      # 1차 소실속도 상수
-
+       
+    #패치의 경우 속효성 약품보다 길게 그림
     total_time = max(patch_duration_hour * 2, t_half * 7)
     time = np.linspace(0, total_time, 1000)
 
     concentration = []
-
     for t in time:
         if t <= patch_duration_hour:
-            #c = (R0 / (k * Vd_total)) * (1 - np.exp(-k * t))
             c = (R0 / (k * Vd_total)) * (1 - np.exp(-k * t))
         else:
             C_end = (R0 / (k * Vd_total) * (1 - np.exp(-k * patch_duration_hour)))
