@@ -34,7 +34,7 @@ else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
 # 패치 약물 농도 계산 함수
-def plot_patch_concentration(    drug_name, D, F, V_d, t_half, t_max, body_weight,    onset_time, patch_duration_hour, end_threshold):
+def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time, patch_duration_hour, end_threshold):
     D_ng = D * 1e6
     k = np.log(2) / t_half
     R0 = (D_ng * F) / patch_duration_hour  # ng/hr
@@ -43,7 +43,7 @@ def plot_patch_concentration(    drug_name, D, F, V_d, t_half, t_max, body_weigh
     Vd_total = V_d * body_weight   # L
     #ke = math.log(2) / t_half      # 1차 소실속도 상수
 
-    total_time = t_half * 7
+    total_time = max(patch_duration_hour * 2, t_half * 7)
     time = np.linspace(0, total_time, 1000)
 
     concentration = []
@@ -58,6 +58,13 @@ def plot_patch_concentration(    drug_name, D, F, V_d, t_half, t_max, body_weigh
         concentration.append(c)
 
     concentration = np.array(concentration)
+
+    # ▶ onset 시간의 농도 계산
+    if onset_time <= patch_duration_hour:
+        onset_conc = (R0 / (k * Vd_total)) * (1 - np.exp(-k * onset_time))
+    else:
+        C_end = (R0 / (k * Vd_total)) * (1 - np.exp(-k * patch_duration_hour))
+        onset_conc = C_end * np.exp(-k * (onset_time - patch_duration_hour))
 
     # 표 출력
     st.markdown(f"""
@@ -77,11 +84,13 @@ def plot_patch_concentration(    drug_name, D, F, V_d, t_half, t_max, body_weigh
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(time, concentration, label='혈중 농도', color='blue')
 
+    #ax.axvline(x=onset_time, color='green', linestyle='--', label=f'Onset: {onset_time:.1f}h')
+    #ax.axvline(x=t_max, color='purple', linestyle='--', label=f'Tmax: {t_max:.1f}h')
+    #ax.axvline(x=patch_duration_hour, color='gray', linestyle='--', label=f'Patch 제거: {patch_duration_hour:.1f}h')
     ax.axvline(x=onset_time, color='green', linestyle='--', label=f'Onset: {onset_time:.1f}h')
+    ax.axhline(y=onset_conc, color='green', linestyle=':', label=f'농도 at onset: {onset_conc:.2f} ng/mL')
 
     ax.axvline(x=t_max, color='purple', linestyle='--', label=f'Tmax: {t_max:.1f}h')
-    #ax.plot(t_max_time, c_max, 'kv', label=f'Cmax: {c_max:.2f} ng/mL')
-
     ax.axvline(x=patch_duration_hour, color='gray', linestyle='--', label=f'Patch 제거: {patch_duration_hour:.1f}h')
 
     ax.set_title(f"{drug_name} - 패치 농도 곡선")
