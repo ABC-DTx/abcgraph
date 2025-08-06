@@ -24,7 +24,7 @@ def get_google_sheet():
     creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     client = gspread.authorize(creds)
     spreadsheet = client.open("마약성 진통제 PK 정리본")
-    worksheet = spreadsheet.worksheet("그래프데이터")
+    worksheet = spreadsheet.worksheet("그래프데이터2")
     data = worksheet.get_all_values()
     df = pd.DataFrame(data[1:], columns=data[0])  # 첫 줄은 컬럼명으로
     df['drug_name'] = df['drug_name'].apply(safe_decode_unicode)
