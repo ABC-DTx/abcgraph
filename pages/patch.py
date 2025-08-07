@@ -68,6 +68,7 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
         C_end = (R0 / (k * Vd_total)) * (1 - np.exp(-k * patch_duration_hour))
         onset_concentration = C_end * np.exp(-k * (onset_time_hour - patch_duration_hour))
         print("어며 여길 탔네")
+    print(f"{drug_name}: {onset_concentration}")
 
     # Tmax 이후에 onset_concentration 으로 감소하는 지점 찾기
     time_after_peak = time[t_max_index:]
@@ -108,15 +109,25 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
     ax.plot(time, concentration, label='혈중 농도', color='blue')
     ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'약효 시작: {onset_time_hour:.1f}h')
     ax.plot(t_max_time, c_max_value, 'kv', markersize=8, label=f'Cmax: {c_max_value:.2f} ng/mL')
-    ax.axhline(y=onset_concentration, color='blue', linestyle=':', label=f'약효 기준 농도: {onset_concentration:.2f} ng/mL')
-    ax.set_title(f"{drug_name} - 패치 농도 곡선")
-    ax.set_xlabel("시간 (hr)")
+    #ax.axhline(y=onset_concentration, color='blue', linestyle=':', label=f'약효 기준 농도: {onset_concentration:.2f} ng/mL')
+    ax.axhline(y=onset_concentration,
+               xmin=0, xmax=1,
+               color='blue', linestyle='--', linewidth=2,
+               label=f'약효 기준 농도: {onset_concentration:.2f} ng/mL')
+    ax.axvline(x=plot_end_time, color='gray', linestyle=':',
+               label=f'그래프 종료: {plot_end_time:.1f}h')
+
+    if falling_time is not None:
+        ax.axvline(x=falling_time, color='orange', linestyle='--',
+                   label=f'약효 종료 시간: {falling_time:.1f}h')
+
+    ax.set_title(f'{drug_name} - 혈중 농도 및 약효 시간')
+    ax.set_xlabel("시간 (hours)")
     ax.set_ylabel("혈중 농도 (ng/mL)")
     ax.grid(True, linestyle=':')
     ax.legend()
-    ax.set_xlim(0, time[-1])
+    ax.set_xlim(0, plot_end_time)
     ax.set_ylim(0)
-
     st.pyplot(fig)
 
 
