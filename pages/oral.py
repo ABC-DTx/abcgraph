@@ -31,7 +31,6 @@ if font_path and os.path.exists(font_path):
     font_prop = fm.FontProperties(fname=font_path)
     plt.rcParams["font.family"] = font_prop.get_name()
     plt.rcParams["axes.unicode_minus"] = False
-    print(f"✅ 폰트 설정됨: {font_prop.get_name()} ({system})")
 else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
@@ -52,25 +51,26 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
     # 혈중 농도 계산
     C1_mg_per_L = (ka * F * D) / (Vd_total * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time))
     C1_mg_per_L[C1_mg_per_L < 0] = 0
-    C1_ng_per_mL = C1_mg_per_L * 1000
+    concentration = C1_mg_per_L * 1000
 
     # Tmax 계산
-    t_max_index = np.argmax(C1_ng_per_mL)
+    t_max_index = np.argmax(concentration)
     t_max_time = time[t_max_index]
-    c_max_value = C1_ng_per_mL[t_max_index]
+    c_max_value = concentration[t_max_index]
 
     # onset 농도 계산
     onset_concentration = (ka * F * D) / (Vd_total * (ka - k)) * \
                           (math.exp(-k * onset_time_hour) - math.exp(-ka * onset_time_hour)) * 1000  # ng/mL
 
+
     # Tmax 이후에 onset_concentration 으로 감소하는 지점 찾기
     time_after_peak = time[t_max_index:]
-    conc_after_peak = C1_ng_per_mL[t_max_index:]
+    conc_after_peak = concentration[t_max_index:]
 
     try:
         fall_index = np.where(conc_after_peak < onset_concentration)[0][0]
         falling_time = time_after_peak[fall_index]
-        falling_onset_concentration = C1_ng_per_mL[t_max_index + fall_index]
+        falling_onset_concentration = concentration[t_max_index + fall_index]
     except IndexError:
         falling_time = None
         falling_onset_concentration = None
@@ -80,7 +80,7 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
         plot_end_time = falling_time + t_end
         mask = time <= plot_end_time
         time = time[mask]
-        C1_ng_per_mL = C1_ng_per_mL[mask]
+        concentration = concentration[mask]
     else:
         plot_end_time = time[-1]  # fallback
 
@@ -97,8 +97,7 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
 
     # ✅ 그래프
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(time, C1_ng_per_mL, label='혈중 농도 (C₁)', color='blue', linewidth=2)
-
+    ax.plot(time, concentration, label='혈중 농도 (C₁)', color='blue', linewidth=2)
     ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'약효 시작: {onset_time_hour:.1f}h')
     ax.plot(t_max_time, c_max_value, 'kv', markersize=8, label=f'Cmax: {c_max_value:.2f} ng/mL')
 
