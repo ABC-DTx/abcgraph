@@ -36,7 +36,7 @@ else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
 # 약동학 모델 함수
-def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, end_threshold):
+def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour):
     Vd = V_d * body_weight
     k = math.log(2) / t_half #1차 소실속도 상수
     ka = (math.log(2) / t_max) + k #흡수속도 상수
@@ -61,12 +61,6 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
     except IndexError:
         onset_end_time = None
 
-    try:
-        end_threshold_index = np.where(conc_after_tmax < end_threshold)[0][0]
-        end_threshold_time = time_after_tmax[end_threshold_index]
-    except IndexError:
-        end_threshold_time = None
-
     # ✅ 그래프 외부에 파라미터 출력 (Streamlit markdown)
     st.markdown(f"""    
     | 항목 | 값 |
@@ -85,15 +79,6 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
     ax.plot(time, C1_ng_per_mL, label='혈중 농도 (C₁)', color='blue', linewidth=2)
 
     ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'약효 시작: {onset_time_hour:.1f}h')
-    if onset_end_time:
-        ax.axvline(x=onset_end_time, color='orange', linestyle='--', label=f'약효 종료: {onset_end_time:.1f}h')
-        ax.axhline(y=onset_concentration, xmin=0, xmax=1, color='red', linestyle='--', linewidth=1.5,
-                   label=f'약효 지속 농도: {onset_concentration:.2f} ng/mL')
-
-    if end_threshold_time:
-        ax.axhline(y=end_threshold, color='red', linestyle=':', label=f'종료 농도: {end_threshold} ng/mL')
-        ax.plot(end_threshold_time, end_threshold, 'ro', markersize=8, label=f'종료 시점: {end_threshold_time:.1f}h')
-
     c_max_value = np.max(C1_ng_per_mL)
     ax.plot(t_max_time, c_max_value, 'kv', markersize=8, label=f'Cmax: {c_max_value:.2f} ng/mL')
 
