@@ -36,7 +36,7 @@ else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
 # 약동학 모델 함수
-def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour):
+def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, end_threshold):
     Vd = V_d * body_weight
     k = math.log(2) / t_half #1차 소실속도 상수
     ka = (math.log(2) / t_max) + k #흡수속도 상수
