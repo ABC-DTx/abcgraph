@@ -37,61 +37,76 @@ else:
 
 # 약동학 모델 함수
 def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, t_end):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import streamlit as st
+    import math
+
+    # 파라미터 계산
     Vd = V_d * body_weight
-    k = math.log(2) / t_half #1차 소실속도 상수
-    ka = (math.log(2) / t_max) + k #흡수속도 상수
-    time = np.linspace(0, t_half * 7, 1000) #X scale 게산 (반감기 * 7 후, 1000으로 나눠 정밀하게 그림)
+    k = math.log(2) / t_half
+    ka = (math.log(2) / t_max) + k
+    total_time = t_half * 7
+    time = np.linspace(0, total_time, 1000)
 
     # 혈중 농도 계산
     C1_mg_per_L = (ka * F * D) / (Vd * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time))
     C1_mg_per_L[C1_mg_per_L < 0] = 0
-    C1_ng_per_mL = C1_mg_per_L * 1000  # mg/L → ng/mL
+    C1_ng_per_mL = C1_mg_per_L * 1000
 
-    # Tmax 시점
+    # Tmax 계산
     t_max_index = np.argmax(C1_ng_per_mL)
     t_max_time = time[t_max_index]
     c_max_value = C1_ng_per_mL[t_max_index]
 
-    # ✅ 1. onset_time_hour 시점의 농도 계산
+    # onset 농도 계산
     onset_concentration = (ka * F * D) / (Vd * (ka - k)) * \
                           (math.exp(-k * onset_time_hour) - math.exp(-ka * onset_time_hour)) * 1000  # ng/mL
 
-    # ✅ 2. Tmax 이후 onset_concentration으로 떨어지는 시점 찾기
+    # Tmax 이후에 onset_concentration 으로 감소하는 지점 찾기
     time_after_peak = time[t_max_index:]
     conc_after_peak = C1_ng_per_mL[t_max_index:]
 
     try:
         fall_index = np.where(conc_after_peak < onset_concentration)[0][0]
         falling_time = time_after_peak[fall_index]
-        falling_onset_concentration = C1_ng_per_mL[t_max_index + fall_index] #약효 종료 농도
+        falling_onset_concentration = C1_ng_per_mL[t_max_index + fall_index]
     except IndexError:
         falling_time = None
         falling_onset_concentration = None
+
+    # ✅ time과 농도 배열을 falling_time + t_end까지 자르기
+    if falling_time is not None:
+        plot_end_time = falling_time + t_end
+        mask = time <= plot_end_time
+        time = time[mask]
+        C1_ng_per_mL = C1_ng_per_mL[mask]
+    else:
+        plot_end_time = time[-1]  # fallback
 
     # ✅ 그래프
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(time, C1_ng_per_mL, label='혈중 농도 (C₁)', color='blue', linewidth=2)
 
-    # onset 시점 및 Tmax 표시
     ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'약효 시작: {onset_time_hour:.1f}h')
     ax.plot(t_max_time, c_max_value, 'kv', markersize=8, label=f'Cmax: {c_max_value:.2f} ng/mL')
 
-    # ✅ 3. onset 시점부터 falling 시점까지 파란 선 그리기
     if falling_time is not None:
         ax.axhline(y=onset_concentration,
-                   xmin=0, xmax=1,  # 전체 가로 길이에 대해 0~100%
+                   xmin=0, xmax=1,
                    color='blue', linestyle='--', linewidth=2,
                    label=f'약효 기준 농도: {onset_concentration:.2f} ng/mL')
-
         ax.axvline(x=falling_time, color='orange', linestyle='--',
                    label=f'약효 종료 시간: {falling_time:.1f}h')
+        ax.axvline(x=plot_end_time, color='gray', linestyle=':',
+                   label=f'그래프 종료: {plot_end_time:.1f}h')
 
     ax.set_title(f'{drug_name} - 혈중 농도 및 약효 시간')
     ax.set_xlabel("시간 (hours)")
     ax.set_ylabel("혈중 농도 (ng/mL)")
     ax.grid(True, linestyle=':')
     ax.legend()
-    ax.set_xlim(0, time[-1])
+    ax.set_xlim(0, plot_end_time)
     ax.set_ylim(0)
 
     st.pyplot(fig)
