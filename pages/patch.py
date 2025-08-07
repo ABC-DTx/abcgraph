@@ -34,7 +34,7 @@ else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
 # 패치 약물 농도 계산 함수
-def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, patch_duration_hour, end_threshold):
+def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, patch_duration_hour, t_end):
     D_ng = D * 1e6
     k = np.log(2) / t_half
     R0 = (D_ng * F) / patch_duration_hour  # ng/hr
@@ -72,14 +72,13 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
     | 반감기 (t½) | {t_half} hr |
     | Tmax | {t_max} hr |
     | Patch 부착 시간 | {patch_duration_hour} hr |
-    | 약효 시작 | {onset_time} hr |
-    | 약효 종료 농도 | {end_threshold} ng/mL |
+    | 약효 시작 | {onset_time_hour} hr |
     """)
 
     # 그래프
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(time, concentration, label='혈중 농도', color='blue')
-    ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'Onset: {onset_time_hour:.1f}h')
+    ax.axvline(x=onset_time_hour, color='green', linestyle='--', label=f'약효 시작: {onset_time_hour:.1f}h')
     ax.axhline(y=onset_conc, color='green', linestyle=':', label=f'농도 at onset: {onset_conc:.2f} ng/mL')
 
     ax.axvline(x=t_max, color='purple', linestyle='--', label=f'Tmax: {t_max:.1f}h')
@@ -113,8 +112,7 @@ def main():
             t_max=float(row['t_max']),
             body_weight=BODY_WEIGHT,
             onset_time_hour=float(row['onset_time_hour']),
-            patch_duration_hour=float(row['patch_duration_hour']),
-            end_threshold=float(row['end_threshold'])
+            patch_duration_hour=float(row['patch_duration_hour'])
         )
         st.markdown("---")
 

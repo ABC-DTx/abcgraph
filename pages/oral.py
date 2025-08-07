@@ -43,14 +43,14 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
     import math
 
     # 파라미터 계산
-    Vd = V_d * body_weight
+    Vd_total = V_d * body_weight
     k = math.log(2) / t_half
     ka = (math.log(2) / t_max) + k
     total_time = t_half * 7
     time = np.linspace(0, total_time, 1000)
 
     # 혈중 농도 계산
-    C1_mg_per_L = (ka * F * D) / (Vd * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time))
+    C1_mg_per_L = (ka * F * D) / (Vd_total * (ka - k)) * (np.exp(-k * time) - np.exp(-ka * time))
     C1_mg_per_L[C1_mg_per_L < 0] = 0
     C1_ng_per_mL = C1_mg_per_L * 1000
 
@@ -60,7 +60,7 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
     c_max_value = C1_ng_per_mL[t_max_index]
 
     # onset 농도 계산
-    onset_concentration = (ka * F * D) / (Vd * (ka - k)) * \
+    onset_concentration = (ka * F * D) / (Vd_total * (ka - k)) * \
                           (math.exp(-k * onset_time_hour) - math.exp(-ka * onset_time_hour)) * 1000  # ng/mL
 
     # Tmax 이후에 onset_concentration 으로 감소하는 지점 찾기
@@ -83,6 +83,17 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
         C1_ng_per_mL = C1_ng_per_mL[mask]
     else:
         plot_end_time = time[-1]  # fallback
+
+    st.markdown(f"""
+    | 항목 | 값 |
+    |------|------|
+    | 용량 (D) | {D} mg |
+    | 생체이용률 (F) | {F*100:.1f}% |
+    | 분포용적 (Vd) | {V_d:.2f} L/kg × {body_weight}kg = {Vd_total} |
+    | 반감기 (t½) | {t_half} hr |
+    | Tmax | {t_max} hr |    
+    | 약효 시작 | {onset_time_hour} hr |
+    """)
 
     # ✅ 그래프
     fig, ax = plt.subplots(figsize=(10, 6))
