@@ -35,7 +35,7 @@ else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
 # 약동학 모델 함수
-def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, t_end):
+def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, t_last):
     import numpy as np
     import matplotlib.pyplot as plt
     import streamlit as st
@@ -77,7 +77,7 @@ def plot_drug_concentration_with_onset(drug_name, D, F, V_d, t_half, t_max, body
 
     # ✅ time과 농도 배열을 falling_time + t_end까지 자르기
     if falling_time is not None:
-        plot_end_time = falling_time + t_end
+        plot_end_time = falling_time + t_last
         mask = time <= plot_end_time
         time = time[mask]
         concentration = concentration[mask]
@@ -139,7 +139,7 @@ def main():
             t_max=float(row['t_max']),
             body_weight=BODY_WEIGHT,
             onset_time_hour=float(row['onset_time_hour']),
-            t_end = float(row['t_end'])
+            t_last = float(row['t_last'])
         )
         st.markdown("---")
 

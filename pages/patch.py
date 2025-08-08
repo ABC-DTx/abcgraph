@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import os
 import matplotlib.ticker as ticker
-
 from functions import get_google_sheet
 
 BODY_WEIGHT = 70
@@ -33,9 +32,8 @@ if font_path and os.path.exists(font_path):
 else:
     print(f"⚠️ 해당 OS({system})에서 폰트를 찾을 수 없습니다.")
 
-
 # 패치 약물 농도 계산 함수
-def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, patch_duration_hour, t_end):
+def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, onset_time_hour, patch_duration_hour, t_last):
 
     #파라미터 계산
     D_ng = D * 1e6 #패치형 약물은 천천히 일정 속도로 투입되므로, 정확한 농도 계산을 위해 용량 단위를 ng로 변환한 후 누적/소실 계산에 직접 사용
@@ -43,7 +41,8 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
     R0 = (D_ng * F) / patch_duration_hour  # ng/hr
     Vd_total = V_d * body_weight  # L
     total_time = max(patch_duration_hour * 2, t_half * 7)# 패치의 경우 속효성 약품보다 길게 그림
-    time = np.linspace(0, total_time, 1000)
+
+    time = np.linspace(0, total_time, 10000)
 
     #혈중농도 계산
     concentration = []
@@ -68,7 +67,7 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
         C_end = (R0 / (k * Vd_total)) * (1 - np.exp(-k * patch_duration_hour))
         onset_concentration = C_end * np.exp(-k * (onset_time_hour - patch_duration_hour))
         print("어며 여길 탔네")
-    print(f"{drug_name}: {onset_concentration}")
+
 
     # Tmax 이후에 onset_concentration 으로 감소하는 지점 찾기
     time_after_peak = time[t_max_index:]
@@ -82,9 +81,9 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
         falling_time = None
         falling_onset_concentration = None
 
-    # ✅ time과 농도 배열을 falling_time + t_end까지 자르기
+    # ✅ time과 농도 배열을 falling_time + t_last 자르기
     if falling_time is not None:
-        plot_end_time = falling_time + t_end
+        plot_end_time = falling_time + t_last
         mask = time <= plot_end_time
         time = time[mask]
         concentration = concentration[mask]
@@ -128,6 +127,7 @@ def plot_patch_concentration(drug_name, D, F, V_d, t_half, t_max, body_weight, o
     ax.legend()
     ax.set_xlim(0, plot_end_time)
     ax.set_ylim(0)
+
     st.pyplot(fig)
 
 
@@ -150,7 +150,7 @@ def main():
             body_weight=BODY_WEIGHT,
             onset_time_hour=float(row['onset_time_hour']),
             patch_duration_hour=float(row['patch_duration_hour']),
-            t_end = float(row['t_end'])
+            t_last = float(row['t_last'])
         )
         st.markdown("---")
 
