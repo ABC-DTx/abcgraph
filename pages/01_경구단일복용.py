@@ -15,7 +15,7 @@ BODY_WEIGHT = 70
 
 # Streamlit 설정
 st.set_page_config(layout="centered")
-st.title("💊 경구 약물 농도 시뮬레이션")
+st.title("💊 경구약물 단일복용 농도")
 
 system = platform.system()
 if system == "Windows":

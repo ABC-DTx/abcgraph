@@ -2,10 +2,11 @@ import streamlit as st
 
 st.set_page_config(
     page_title="Drug Simulation Dashboard",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("💊 약물 농도 시뮬레이션 대시보드")
+
 st.markdown("""
     이 애플리케이션은 **경구** 및 **패치** 투여 방식에 따라  
     약물 농도 곡선을 시뮬레이션하고 시각화합니다.
@@ -13,7 +14,8 @@ st.markdown("""
     ---
     
     ### 📂 페이지 안내
-    - [📈 경구 투여 시뮬레이션 (속효성, 단기지속성)](/oral)
+    - [📈 경구 단일 투여 시뮬레이션 (속효성, 단기지속성)](/oral)
+    - [📈 경구 연속 투여 시뮬레이션 (속효성, 단기지속성)](/oral_multiple)
     - [📉 패치 투여 시뮬레이션 (제로오더모델: 패치를 떼자마자 투여량이 0으로 종료됨)](/patch)
     - [📉 패치 투여 시뮬레이션 (패치제거후 피부에 남은 약제가 지속적으로 흡수됨)](/patch_w)
     - Google Spreadsheet: https://docs.google.com/spreadsheets/d/1BXE4oJEHYxY-65O7P4ZDQOlXIBBbdJQzAigmDeTniUc/edit?gid=1824505919#gid=1824505919
